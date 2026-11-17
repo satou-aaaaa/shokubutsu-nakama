@@ -342,6 +342,19 @@ try {
       try { return __nm.load().runs.e; } finally { __nm.setMem(null); }
     });
     check("終えた回は、別のタブが新しく保存した古い写しから戻さない", !left, JSON.stringify(left));
+    const kept = await g.evaluate(() => {
+      const d = __nm.todayKey(), old = { mode: "e", date: d, list: ["ine|1"], res: [{ m: 0 }], cur: null, id: "gone1" }, nw = { mode: "e", date: d, list: ["ine|2"], res: [], cur: null, id: "new2" };
+      const base = __nm.load();
+      const a = JSON.parse(JSON.stringify(base)); a.runs.e = nw; a.gone = { gone1: 1 }; a.t = 100;
+      const b = JSON.parse(JSON.stringify(base)); b.runs.e = old; b.t = 200;
+      localStorage.setItem("snk-v1", JSON.stringify(b)); __nm.setMem(JSON.stringify(a));
+      try { const r = __nm.load().runs.e; return r && r.id; } finally { __nm.setMem(null); }
+    });
+    check("終えた回と、まだ保存できていない次の回があるとき、終えた回を戻さず次の回を残す（CodeRabbit kagaku-henka#1）", kept === "new2", String(kept));
+    const before = errors.length;
+    await g.evaluate(() => localStorage.setItem("snk-v1", JSON.stringify({ v: 1, tut: true, ebest: { toString: null }, dex: { ine: { toString: null } } })));
+    await g.reload(); await g.waitForTimeout(200);
+    check("記録の数の所に変な値（{toString:null}）が入っても、ホームが開く（CodeRabbit kagaku-henka#1）", errors.length === before && await g.locator("#go-d").count() === 1, errors.slice(before).join(","));
     await ctx.close();
   }
 
