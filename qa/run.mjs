@@ -99,6 +99,8 @@ check("言い方：「必ず」「絶対」と言い切らない", !/必ず|絶�
 { const howto = (html.match(/<dialog id="howto"[\s\S]*?<\/dialog>/) || [""])[0], ab = (html.match(/function about\(\)[\s\S]*?\n}/) || [""])[0], dis = (t) => /教科書/.test(t) && /図鑑/.test(t);
   check("言い方：遊び方・「このゲームについて」・README のどれにも、教科書や植物の図鑑で確かめることがある", dis(howto) && dis(ab) && dis(readme), `遊び方 ${dis(howto)}・について ${dis(ab)}`); }
 check("写し元（動物なかま分け・なに税？）の言葉が残っていない（game-dev.md A 手順5）", !/憲法|国会|内閣|裁判所|天皇|国事行為|しくみ帳|kenpo|kps|KPS|税|納め|財務省|e-Gov|zeikin|zni|ZNI|国税庁|動物|哺乳|魚類|呼吸|doubutsu|dnk|DNK|ズーネット|海遊館/.test(html + gen + readme));
+{ const a11 = JSON.parse(readFileSync(path.join(root, "qa/a11y.json"), "utf8"));
+  check("見やすさの検査の画面の名前（qa/a11y.json）が、このゲームの画面にある名前（写し元の名前が残らない。CodeRabbit ekisei-yomi#1 の「雲帳」）", (a11.screens || []).every((x) => html.includes(x.name)), (a11.screens || []).map((x) => x.name).join(",")); }
 check("画面にお笑いの言葉を入れない（本物っぽく）", !/お笑い|ギャグ|ツッコミ|なんでやねん|（うそ）/.test(html + gen));
 check("引き継ぎ：transfer.js をゲームの script より前に、このゲームの記録のキー（記録・文字・復習）だけで読む・depth.js も前に読む", /<script src="transfer\.js" data-game="shokubutsu-nakama" data-keys="snk-v1,snk-fs,snk-depth"><\/script>\s*<script src="depth\.js" data-game="shokubutsu-nakama" data-key="snk-depth"><\/script>\s*<\/head>/.test(html) && html.indexOf('src="transfer.js"') < html.indexOf('src="data.js"') && /data-hk/.test(html) && existsSync(path.join(root, "transfer.js")));
 check("好きなだけ遊べる：チケット・回数の上限・🔒で開くモードを入れない（game-dev.md F1・F2）", !/🎫|チケット|すると開く|🔒/.test(html) && !/\blife\b|ELIFE/.test(html));
@@ -412,7 +414,7 @@ try {
     await solve(q); await q.click("#next"); await q.waitForTimeout(150);
     const after = await mem(q), dp2 = await q.evaluate(() => JSON.parse(localStorage.getItem("snk-depth")));
     check("復習を終えると結果は「復習」・今日の記録は増えない・シェアは出ない", (await q.textContent("h1")).includes("復習") && JSON.stringify(after.days) === JSON.stringify(before.days) && await q.locator("#share").count() === 0);
-    check("復習で一度で正解すると、次は3日後へ進む", Object.values(dp2.rv).every((x) => x.s === 1 && x.due > TODAY));
+    check("復習で一度で正解すると、次は3日後へ進む", Object.values(dp2.rv).every((x) => x.s === 1 && x.due === new Date(Date.parse(TODAY) + 3 * 864e5).toISOString().slice(0, 10)), JSON.stringify(dp2.rv));
     await q.goto(url); await q.waitForTimeout(150);
     check("復習を終えたら、ホームの「復習」は消える", await q.locator("#go-r").count() === 0);
     await q.evaluate(() => { const d = JSON.parse(localStorage.getItem("snk-depth")); d.rv["nai|1"] = { s: 0, due: "2026-01-01", t: 1 }; d.rv["constructor|x"] = { s: 0, due: "2026-01-01", t: 2 }; localStorage.setItem("snk-depth", JSON.stringify(d)); });
@@ -508,7 +510,7 @@ try {
   check("2段目「種子は？」：どの種類の問題も3つ（胚珠が子房の中・むき出し・種子をつくらない）のどれかで、3つとも使う", bad.length === 0 && Object.keys(G.GROUPS).join() === "hi,ra,ho" && used.size === 3, bad.join(",")); }
 // 引き継ぎコード（shared-workflows template/qa/transfer-check.mjs）
 try {
-  const sample = { "snk-v1": JSON.stringify({ v: 1, tut: true, days: { "2026-11-13": { m: [0, 1, 0, 0, 2], k: ["e", "mitame", "halo", "kori", "kawa"] } }, hdays: {}, adays: {}, dex: { ine: 1, aburana: 1, sakura: 1, sugi: 1, zenmai: 1 }, runs: {}, kofi: {}, ach: {}, ebest: 7, t: 1 }), "snk-fs": "3" };
+  const sample = { "snk-v1": JSON.stringify({ v: 1, tut: true, days: { "2026-11-13": { m: [0, 1, 0, 0, 2], k: ["e", "mitame", "halo", "kori", "kawa"] } }, hdays: {}, adays: {}, dex: { ine: 1, aburana: 1, sakura: 1, sugi: 1, zenmai: 1 }, runs: {}, kofi: {}, ach: {}, ebest: 7, t: 1 }), "snk-fs": "3", "snk-depth": JSON.stringify({ v: 1, rv: { "x|1": { s: 1, due: "2026-11-20", t: 1 } } }) }; // 復習の記録も引き継ぐ（CodeRabbit ekisei-yomi#1）
   await checkTransfer({ browser, url, game: "shokubutsu-nakama", sample, check, open: async (pg) => { if (await pg.locator("#howto[open]").count()) await pg.click("#howto-ok"); } });
 } catch (e) { check("引き継ぎの検査が最後まで動く", false, e.message.split("\n")[0]); }
 await browser.close();
